@@ -151,15 +151,15 @@ def check_unread_messages(service):
 
 def main():    
     service = get_service()
-    utc_now = datetime.now(timezone.utc)
-    est_offset = timedelta(hours=-4)
-
+    
     start_time_str = os.getenv("START_TIME")
     end_time_str = os.getenv("END_TIME")
     
     start_hour, start_minute = map(int, start_time_str.split(':'))
     end_hour, end_minute = map(int, end_time_str.split(':'))
     while True:
+        utc_now = datetime.now(timezone.utc)
+        est_offset = timedelta(hours=-4)
         now = utc_now + est_offset
         start_time = now.replace(hour=start_hour, minute=start_minute, second=0, microsecond=0)
         end_time = now.replace(hour=end_hour, minute=end_minute, second=0, microsecond=0)
