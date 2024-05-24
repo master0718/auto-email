@@ -60,7 +60,7 @@ def get_service():
     creds = None
     token_path = 'token.pickle'
     credentials_path = 'credentials.json'
-    print(credentials_path)
+    # print(credentials_path)
     if os.path.exists(token_path):
         with open(token_path, 'rb') as token:
             creds = pickle.load(token)
@@ -119,35 +119,40 @@ def mark_message_as_read(service, user_id, message_id):
         print(f"An error occurred: {error}")
 
 def check_unread_messages(service):
-    from_email = os.getenv("MAIL_ADDRESS")
-    query = f'is:unread from:{from_email}'
-    results = service.users().messages().list(userId='me', q=query).execute()
-    messages = results.get('messages', [])
-    if not messages:
-        print("No unread messages.")
-    else:
-        for message in messages:
-            msg = service.users().messages().get(userId='me', id=message['id'], format='full').execute()
-            subject = next((header['value'] for header in msg['payload']['headers'] if header['name'] == 'Subject'), None)
-            content = msg['snippet']  # Using snippet as content for simplicity
-            attachment_path = None
+    try:
+        from_email = os.getenv("MAIL_ADDRESS")
+        query = f'is:unread from:{from_email}'
+        results = service.users().messages().list(userId='me', q=query).execute()
+        messages = results.get('messages', [])
+        if not messages:
+            print("No unread messages.")
+        else:
+            for message in messages:
+                msg = service.users().messages().get(userId='me', id=message['id'], format='full').execute()
+                subject = next((header['value'] for header in msg['payload']['headers'] if header['name'] == 'Subject'), None)
+                content = msg['snippet']  # Using snippet as content for simplicity
+                attachment_path = None
 
-            print("Subject:\n" + subject)
-            print("Content:\n" + content)
-            if subject:
-                # Find the position of the last "-"
-                last_dash_index = subject.rfind('-')
+                print("Subject:\n" + subject)
+                print("Content:\n" + content)
+                if subject:
+                    # Find the position of the last "-"
+                    last_dash_index = subject.rfind('-')
 
-                if last_dash_index != -1:  # Ensure "-" is found in the subject
-                    # Replace everything after the last "-" with "X ACCEPT"
-                    reply_subject = subject[:last_dash_index].strip() + " " + os.getenv("SUBJECT_SUFFIX")
+                    if last_dash_index != -1:  # Ensure "-" is found in the subject
+                        # Replace everything after the last "-" with "X ACCEPT"
+                        reply_subject = subject[:last_dash_index].strip() + " " + os.getenv("SUBJECT_SUFFIX")
+                    else:
+                        reply_subject = subject  # If no "-", use original subject
                 else:
-                    reply_subject = subject  # If no "-", use original subject
-            else:
-                reply_subject = ""  # Handle if subject is not found
-            reply_content = os.getenv("MAIL_CONTENT")
-            mark_message_as_read(service, 'me', message['id'])
-            reply_to_message(service, 'me', message['id'], reply_subject, reply_content, attachment_path, from_email)
+                    reply_subject = ""  # Handle if subject is not found
+                reply_content = os.getenv("MAIL_CONTENT")
+                mark_message_as_read(service, 'me', message['id'])
+                reply_to_message(service, 'me', message['id'], reply_subject, reply_content, attachment_path, from_email)
+    except Exception as error:
+        # print(f"An error occurred: {error}")
+        print("Network Error! Check your internet connection.")
+        return None
 
 def main():    
     service = get_service()
@@ -163,6 +168,7 @@ def main():
         now = utc_now + est_offset
         start_time = now.replace(hour=start_hour, minute=start_minute, second=0, microsecond=0)
         end_time = now.replace(hour=end_hour, minute=end_minute, second=0, microsecond=0)
+        print(now.strftime('%Y-%m-%d %H:%M:%S'))
         if now < start_time or now > end_time:
             print('Checking unread messages from ' + os.getenv("MAIL_ADDRESS"))
             check_unread_messages(service)
